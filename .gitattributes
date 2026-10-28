@@ -1,0 +1,3 @@
+# LF everywhere: DVC hashes source files, so line endings must not depend on the OS
+* text=auto eol=lf
+*.png binary
