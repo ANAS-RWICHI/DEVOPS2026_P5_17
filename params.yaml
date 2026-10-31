@@ -1,0 +1,18 @@
+features:
+  lags: [7, 14, 28]
+  rolling_windows: [7, 28]
+  test_days: 90
+
+train:
+  # naive | ridge | random_forest | gbr
+  model: gbr
+  seed: 42
+  ridge:
+    alpha: 1.0
+  random_forest:
+    n_estimators: 100
+    max_depth: 12
+  gbr:
+    max_iter: 200
+    learning_rate: 0.1
+    max_depth: 6
