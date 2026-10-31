@@ -5,5 +5,15 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 
+# Data and models are tracked by DVC, never by Git
+/data/*
+!/data/raw/
+/data/raw/*
+!/data/raw/*.dvc
+!/data/raw/.gitignore
+/models/
+/metrics/promotion.json
+/metrics/*.png
+
 # Secrets and local config
 .env

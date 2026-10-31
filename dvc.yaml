@@ -1,0 +1,19 @@
+stages:
+  prepare:
+    cmd: python -m src.data.prepare
+    deps:
+      - src/data/prepare.py
+      - data/raw/train.csv
+    outs:
+      - data/processed/sales_clean.csv
+
+  featurize:
+    cmd: python -m src.features
+    deps:
+      - src/features.py
+      - data/processed/sales_clean.csv
+    params:
+      - features
+    outs:
+      - data/features/train.csv
+      - data/features/test.csv
