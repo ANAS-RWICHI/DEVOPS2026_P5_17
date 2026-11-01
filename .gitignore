@@ -15,5 +15,10 @@ __pycache__/
 /metrics/promotion.json
 /metrics/*.png
 
+# Local MLflow store (used when no tracking server is configured)
+/mlflow.db
+/mlruns/
+/mlartifacts/
+
 # Secrets and local config
 .env

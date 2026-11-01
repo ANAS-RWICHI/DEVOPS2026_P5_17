@@ -17,3 +17,16 @@ stages:
     outs:
       - data/features/train.csv
       - data/features/test.csv
+
+  train:
+    cmd: python -m src.train
+    deps:
+      - src/train.py
+      - src/models.py
+      - data/features/train.csv
+    params:
+      - train
+      - mlflow
+    outs:
+      - models/model.pkl
+      - models/run.json

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
+import os
 from pathlib import Path
 
 import yaml
@@ -26,6 +28,25 @@ TARGET = "sales"
 def load_params(path: Path = ROOT / "params.yaml") -> dict:
     with open(path, encoding="utf-8") as f:
         return yaml.safe_load(f)
+
+
+def tracking_uri() -> str:
+    """MLflow server if MLFLOW_TRACKING_URI is set, else a local SQLite file."""
+    return os.getenv("MLFLOW_TRACKING_URI", "sqlite:///mlflow.db")
+
+
+def git_commit() -> str:
+    """Current commit hash, so that a run can be traced back to its code."""
+    try:
+        from dulwich.repo import Repo
+
+        return Repo(str(ROOT)).head().decode()
+    except Exception:
+        return "unknown"
+
+
+def file_md5(path: Path) -> str:
+    return hashlib.md5(path.read_bytes()).hexdigest()
 
 
 def write_json(path: Path, payload: dict) -> None:
