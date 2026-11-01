@@ -30,3 +30,16 @@ stages:
     outs:
       - models/model.pkl
       - models/run.json
+
+  evaluate:
+    cmd: python -m src.evaluate
+    deps:
+      - src/evaluate.py
+      - models/model.pkl
+      - models/run.json
+      - data/features/test.csv
+    metrics:
+      - metrics/metrics.json:
+          cache: false
+    plots:
+      - metrics/pred_vs_actual.png
