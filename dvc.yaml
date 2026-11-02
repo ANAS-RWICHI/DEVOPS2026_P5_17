@@ -43,3 +43,15 @@ stages:
           cache: false
     plots:
       - metrics/pred_vs_actual.png
+
+  promote:
+    cmd: python -m src.promote
+    deps:
+      - src/promote.py
+      - models/run.json
+      - metrics/metrics.json
+    params:
+      - promote
+      - mlflow.model_name
+    outs:
+      - metrics/promotion.json

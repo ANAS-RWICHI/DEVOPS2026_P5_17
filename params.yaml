@@ -17,6 +17,12 @@ train:
     learning_rate: 0.1
     max_depth: 6
 
+promote:
+  # A candidate is promoted only if test RMSE <= max_rmse
+  # and it beats the current production model by min_improvement.
+  max_rmse: 12.0
+  min_improvement: 0.0
+
 mlflow:
   experiment: demand-forecast
   model_name: demand-forecast
