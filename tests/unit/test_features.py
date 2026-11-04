@@ -1,7 +1,14 @@
 import pandas as pd
 import pytest
 
-from src.features import add_features, feature_columns, split_by_time
+from src.features import (
+    HORIZON,
+    add_features,
+    feature_columns,
+    features_from_history,
+    history_length,
+    split_by_time,
+)
 
 LAGS, WINDOWS = [7, 14, 28], [7, 28]
 
@@ -31,6 +38,20 @@ def test_series_do_not_leak_into_each_other(series):
     other = series.assign(item=2, sales=1000)
     out = add_features(pd.concat([series, other]), LAGS, WINDOWS)
     assert (out.loc[out["item"] == 1, "lag_7"] < 1000).all()
+
+
+def test_api_features_match_training_features(series):
+    """Training/serving consistency: same history -> same features."""
+    trained = add_features(series, LAGS, WINDOWS).iloc[-1]
+    history = series["sales"].tolist()[: 80 - HORIZON]  # ends 7 days before day 79
+    served = features_from_history(history, LAGS, WINDOWS)
+    for name, value in served.items():
+        assert value == pytest.approx(trained[name]), name
+
+
+def test_history_too_short_is_rejected():
+    with pytest.raises(ValueError, match="at least"):
+        features_from_history([1.0] * (history_length(LAGS, WINDOWS) - 1), LAGS, WINDOWS)
 
 
 def test_lag_shorter_than_horizon_is_rejected(series):
