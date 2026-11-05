@@ -65,3 +65,12 @@ def test_without_model_the_api_is_alive_but_not_ready(monkeypatch):
         assert client.get("/health").status_code == 200
         assert client.get("/ready").status_code == 503
         assert client.post("/predict", json=PAYLOAD).status_code == 503
+
+
+def test_metrics_endpoint_exposes_prometheus_counters(monkeypatch):
+    with make_client(monkeypatch, FakeModel(42.0)) as client:
+        client.post("/predict", json=PAYLOAD)
+        body = client.get("/metrics").text
+    assert 'api_requests_total{path="/predict",status="200"}' in body
+    assert "model_prediction_units_count" in body
+    assert "model_loaded 1.0" in body

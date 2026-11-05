@@ -5,13 +5,15 @@ from __future__ import annotations
 import datetime as dt
 import logging
 import os
+import time
 from contextlib import asynccontextmanager
 
 import joblib
 import mlflow
 import numpy as np
 import pandas as pd
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request, Response
+from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, Histogram, generate_latest
 from pydantic import BaseModel, Field
 
 from src.config import MODEL_PKL, PRODUCTION_ALIAS, load_params, tracking_uri
@@ -25,6 +27,14 @@ WINDOWS = PARAMS["features"]["rolling_windows"]
 COLUMNS = feature_columns(LAGS, WINDOWS)
 MODEL_NAME = os.getenv("MODEL_NAME", PARAMS["mlflow"]["model_name"])
 
+REQUESTS = Counter("api_requests_total", "HTTP requests", ["path", "status"])
+LATENCY = Histogram("api_request_duration_seconds", "Request latency", ["path"])
+PREDICTIONS = Histogram(
+    "model_prediction_units",
+    "Distribution of predicted demand, to watch for drift in the outputs",
+    buckets=(0, 5, 10, 20, 30, 40, 60, 80, 120, 200),
+)
+MODEL_LOADED = Gauge("model_loaded", "1 if a model is loaded and able to predict")
 
 
 def load_model():
@@ -42,6 +52,7 @@ def load_model():
 
 def refresh(app: FastAPI) -> None:
     app.state.model, app.state.model_source = load_model()
+    MODEL_LOADED.set(0 if app.state.model is None else 1)
 
 
 @asynccontextmanager
@@ -56,6 +67,17 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+
+@app.middleware("http")
+async def record_metrics(request: Request, call_next):
+    start = time.perf_counter()
+    response = await call_next(request)
+    route = request.scope.get("route")
+    path = route.path if route else "unmatched"
+    REQUESTS.labels(path=path, status=response.status_code).inc()
+    LATENCY.labels(path=path).observe(time.perf_counter() - start)
+    return response
 
 
 class PredictRequest(BaseModel):
@@ -88,6 +110,17 @@ def ready():
     return {"status": "ready", "model_source": app.state.model_source}
 
 
+@app.post("/reload", summary="Reload the production model after a promotion or a rollback")
+def reload():
+    refresh(app)
+    return {"model_source": app.state.model_source}
+
+
+@app.get("/metrics", include_in_schema=False)
+def metrics():
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+
 @app.post("/predict", response_model=PredictResponse)
 def predict(req: PredictRequest):
     if app.state.model is None:
@@ -111,4 +144,5 @@ def predict(req: PredictRequest):
     )
     row = add_calendar(row)
     prediction = max(0.0, float(app.state.model.predict(row[COLUMNS])[0]))
+    PREDICTIONS.observe(prediction)
     return PredictResponse(prediction=round(prediction, 2), model_source=app.state.model_source)
