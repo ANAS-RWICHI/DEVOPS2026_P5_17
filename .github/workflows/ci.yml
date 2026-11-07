@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  quality:
+    name: Lint and unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements-dev.txt -c constraints.txt
+      - run: ruff check .
+      - run: pytest tests/unit -q
+
+  pipeline:
+    name: Pipeline, model validation and CML report
+    runs-on: ubuntu-latest
+    needs: quality
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements-dev.txt -c constraints.txt
+
+      - name: Fetch the raw data from the DVC remote
+        run: dvc pull data/raw/train.csv.dvc
+
+      - name: Reproduce the pipeline
+        run: dvc repro
+
+      - name: Validate the model
+        run: pytest tests/model -q
+
+      - name: Build the report
+        run: |
+          python -m scripts.make_report
+          echo "### Change against main" >> report.md
+          dvc metrics diff origin/main --md >> report.md
+
+      - uses: iterative/setup-cml@v2
+        if: github.event_name == 'pull_request'
+      - name: Post the report on the pull request
+        if: github.event_name == 'pull_request'
+        env:
+          REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: cml comment create report.md
+
+  docker:
+    name: Docker build
+    runs-on: ubuntu-latest
+    needs: quality
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t demand-forecast:ci .
