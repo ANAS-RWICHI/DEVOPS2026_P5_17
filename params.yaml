@@ -20,7 +20,7 @@ train:
 promote:
   # A candidate is promoted only if test RMSE <= max_rmse
   # and it beats the current production model by min_improvement.
-  max_rmse: 12.0
+  max_rmse: 10.0  # naive baseline on the Kaggle test period: 12.05
   min_improvement: 0.0
 
 mlflow:

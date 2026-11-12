@@ -1,0 +1,144 @@
+schema: '2.0'
+stages:
+  prepare:
+    cmd: python -m src.data.prepare
+    deps:
+    - path: data/raw/train.csv
+      hash: md5
+      md5: 9566c3963451137c2d7733f39fedb397
+      size: 17333449
+    - path: src/data/prepare.py
+      hash: md5
+      md5: 536bfc02c5eef2e56d86f30d8c8e49c9
+      size: 1469
+    outs:
+    - path: data/processed/sales_clean.csv
+      hash: md5
+      md5: 8249325f4afabdf054f90b0f6e52061b
+      size: 17333449
+  featurize:
+    cmd: python -m src.features
+    deps:
+    - path: data/processed/sales_clean.csv
+      hash: md5
+      md5: 8249325f4afabdf054f90b0f6e52061b
+      size: 17333449
+    - path: src/features.py
+      hash: md5
+      md5: b1299d561a2369a16fea3749410dde19
+      size: 3388
+    params:
+      params.yaml:
+        features:
+          lags:
+          - 7
+          - 14
+          - 28
+          rolling_windows:
+          - 7
+          - 28
+          test_days: 90
+    outs:
+    - path: data/features/test.csv
+      hash: md5
+      md5: b50889316e00cf866f5915f45ab1b6fd
+      size: 3449648
+    - path: data/features/train.csv
+      hash: md5
+      md5: 41a5f15cd1d3614641b3cfff11e2b8bc
+      size: 64288353
+  train:
+    cmd: python -m src.train
+    deps:
+    - path: data/features/train.csv
+      hash: md5
+      md5: 41a5f15cd1d3614641b3cfff11e2b8bc
+      size: 64288353
+    - path: src/models.py
+      hash: md5
+      md5: 7161f75b5bf9bf557e3281a42b49e5d9
+      size: 1492
+    - path: src/train.py
+      hash: md5
+      md5: a2022c5fdedd616626b8260a4f137c2a
+      size: 2175
+    params:
+      params.yaml:
+        mlflow:
+          experiment: demand-forecast
+          model_name: demand-forecast
+        train:
+          model: gbr
+          seed: 42
+          ridge:
+            alpha: 1.0
+          random_forest:
+            n_estimators: 100
+            max_depth: 12
+          gbr:
+            max_iter: 200
+            learning_rate: 0.1
+            max_depth: 6
+    outs:
+    - path: models/model.pkl
+      hash: md5
+      md5: 6e4f7a3ab501715b60333685a8e3fbe2
+      size: 738552
+    - path: models/run.json
+      hash: md5
+      md5: 35f3fcf9d78de3894fcd210633c65cc0
+      size: 108
+  evaluate:
+    cmd: python -m src.evaluate
+    deps:
+    - path: data/features/test.csv
+      hash: md5
+      md5: b50889316e00cf866f5915f45ab1b6fd
+      size: 3449648
+    - path: models/model.pkl
+      hash: md5
+      md5: 6e4f7a3ab501715b60333685a8e3fbe2
+      size: 738552
+    - path: models/run.json
+      hash: md5
+      md5: 35f3fcf9d78de3894fcd210633c65cc0
+      size: 108
+    - path: src/evaluate.py
+      hash: md5
+      md5: 7a5a42aae29142966175602bc3dac4e3
+      size: 2367
+    outs:
+    - path: metrics/metrics.json
+      hash: md5
+      md5: 978e07ba0fa8f5642bf3b7f110b27078
+      size: 100
+    - path: metrics/pred_vs_actual.png
+      hash: md5
+      md5: a541245e61203d49c009e5bd5eb58bc5
+      size: 74483
+  promote:
+    cmd: python -m src.promote
+    deps:
+    - path: metrics/metrics.json
+      hash: md5
+      md5: 978e07ba0fa8f5642bf3b7f110b27078
+      size: 100
+    - path: models/run.json
+      hash: md5
+      md5: 35f3fcf9d78de3894fcd210633c65cc0
+      size: 108
+    - path: src/promote.py
+      hash: md5
+      md5: 7eb6b7617cff7255a610fb92e485ce1f
+      size: 2630
+    params:
+      params.yaml:
+        mlflow.model_name: demand-forecast
+        promote:
+          max_rmse: 10.0
+          min_improvement: 0.0
+    outs:
+    - path: metrics/promotion.json
+      hash: md5
+      md5: 180a008539eb9a85573b025619be2457
+      size: 211
