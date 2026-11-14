@@ -139,3 +139,29 @@ Aucune n'est obligatoire et le projet n'utilise aucun secret. Voir `.env.example
 2. `dvc repro`, tests de validation du modèle, puis rapport CML (métriques,
    figure, écart avec `main`) publié en commentaire de la pull request ;
 3. construction de l'image Docker.
+
+## Données
+
+Jeu réel : **Store Item Demand Forecasting Challenge** (Kaggle),
+https://www.kaggle.com/competitions/demand-forecasting-kernels-only — fichier
+`train.csv` : ventes quotidiennes de 50 produits dans 10 magasins sur 5 ans
+(2013-2017), colonnes `date, store, item, sales`. Aucune donnée personnelle.
+
+Le fichier n'est jamais commité dans Git : il est suivi par DVC
+(`data/raw/train.csv.dvc`) et stocké sur le remote DVC. Licence : données de
+compétition Kaggle, soumises au règlement de la compétition ; elles ne sont
+pas redistribuées publiquement par ce dépôt.
+
+Première mise en place (une seule fois, par un membre du groupe) :
+
+1. accepter le règlement de la compétition sur Kaggle et télécharger `train.csv` ;
+2. le placer dans `data/raw/train.csv` ;
+3. `dvc add data/raw/train.csv` puis `git add data/raw/train.csv.dvc data/raw/.gitignore` ;
+4. `dvc remote add -d origin <url>` puis `dvc push`.
+
+Ensuite, tout le monde (et la CI) récupère le fichier avec `dvc pull`.
+
+Pour essayer le pipeline sans le fichier Kaggle, `python -m src.data.sample`
+crée un fichier synthétique de même format (à ne pas versionner).
+
+Remote DVC : **à configurer** (voir « Reste à faire »).
