@@ -165,3 +165,23 @@ Pour essayer le pipeline sans le fichier Kaggle, `python -m src.data.sample`
 crée un fichier synthétique de même format (à ne pas versionner).
 
 Remote DVC : **à configurer** (voir « Reste à faire »).
+
+## Limites connues
+
+- Sans accès au remote DVC, le pipeline ne peut pas démarrer (les données Kaggle ne sont pas dans Git).
+- Le jeu ne contient ni prix ni promotions : le modèle n'utilise que l'historique des ventes et le calendrier.
+- Horizon de prévision fixe de 7 jours ; le client de l'API fournit lui-même
+  l'historique récent des ventes (pas de base de données côté service).
+- Les identifiants magasin et produit sont traités comme des nombres.
+- L'API charge le modèle au démarrage : après une promotion, appeler `POST /reload`.
+- Pas encore de Prometheus/Grafana ni d'alertes : seul l'endpoint `/metrics` existe.
+- Image unique de 1,4 Go (MLflow, DVC et scikit-learn dans la même image).
+
+## Reste à faire
+
+- [x] Télécharger `train.csv` depuis Kaggle et `dvc add`.
+- [x] Relancer `dvc repro` sur les vraies données (RMSE 7,72 contre 12,05 pour le modèle naïf) et recaler le seuil `promote.max_rmse` à 10.
+- [ ] Configurer le remote DVC (DagsHub, privé) et `dvc push` (voir « Données »).
+- [ ] Comparer plusieurs modèles et documenter les exécutions MLflow.
+- [ ] Supervision : Prometheus + Grafana dans Compose, seuils et alertes.
+- [ ] Rapport (10 à 15 pages) et diapositives (8 à 12).
